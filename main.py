@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List
 import storage
 
@@ -10,18 +10,19 @@ app = FastAPI(
 )
 
 class TransaccionCreate(BaseModel):
-    tipo: str = Field(..., description="Tipo de transacción: 'ingreso' o 'gasto'")
-    monto: float = Field(..., gt=0, description="Monto de la transacción (debe ser positivo)")
-    descripcion: str = Field(..., min_length=1, description="Descripción de la transacción")
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "tipo": "ingreso",
                 "monto": 1500.50,
                 "descripcion": "Salario mensual"
             }
         }
+    )
+
+    tipo: str = Field(..., description="Tipo de transacción: 'ingreso' o 'gasto'")
+    monto: float = Field(..., gt=0, description="Monto de la transacción (debe ser positivo)")
+    descripcion: str = Field(..., min_length=1, description="Descripción de la transacción")
 
 class Transaccion(TransaccionCreate):
     id: int
