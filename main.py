@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List
 import storage
@@ -7,6 +8,15 @@ app = FastAPI(
     title="API de Finanzas Personales",
     description="API REST para registrar ingresos y gastos",
     version="1.0.0"
+)
+
+# Configuración CORS - permite requests desde cualquier origen
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite todos los orígenes
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos los métodos (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],  # Permite todos los headers
 )
 
 class TransaccionCreate(BaseModel):
