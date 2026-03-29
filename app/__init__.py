@@ -1,0 +1,3 @@
+"""
+Finance application package
+"""

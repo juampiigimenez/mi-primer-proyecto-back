@@ -7,4 +7,33 @@ venv/
 env/
 ENV/
 *.log
+
+# Old data files (v1.0.0)
 transacciones.json
+
+# Data directory (generated files)
+data/*.json
+data/*.backup
+data/*.tmp
+
+# Keep example files
+!data/mercadopago_ejemplo.csv
+!data/mercadopago_full_ejemplo.csv
+!data/.gitkeep
+
+# Backups
+*.backup
+*.tmp
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
