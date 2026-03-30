@@ -16,7 +16,7 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_file_import(
     file: UploadFile = File(...),
-    source_type: SourceType = Form(...),
+    source_type: Optional[SourceType] = Form(None),
     account_id: Optional[str] = Form(None),
     credit_card_id: Optional[str] = Form(None),
 ):
@@ -25,7 +25,7 @@ async def upload_file_import(
 
     Args:
         file: CSV or Excel file
-        source_type: Source type (mercadopago_csv, mercadopago_excel, etc)
+        source_type: Optional source type (defaults to mercadopago based on extension)
         account_id: Optional default account ID for transactions
         credit_card_id: Optional default credit card ID for transactions
 
@@ -40,6 +40,13 @@ async def upload_file_import(
             status_code=400,
             detail=f"Formato de archivo no soportado: {file_ext}. Use: {', '.join(allowed_extensions)}"
         )
+
+    # Auto-detect source_type if not provided
+    if not source_type:
+        if file_ext == '.csv':
+            source_type = SourceType.MERCADOPAGO_CSV
+        else:  # .xlsx or .xls
+            source_type = SourceType.MERCADOPAGO_EXCEL
 
     # Create temp file
     with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
@@ -57,8 +64,18 @@ async def upload_file_import(
             credit_card_id=credit_card_id,
         )
 
+        # Build summary response
         return {
-            "message": "Importación completada",
+            "success": True,
+            "message": "Importación completada exitosamente",
+            "summary": {
+                "total_rows": batch.get('total_rows', 0),
+                "processed": batch.get('processed_rows', 0),
+                "duplicates": batch.get('duplicated_rows', 0),
+                "errors": batch.get('failed_rows', 0),
+                "review_required": batch.get('metadata', {}).get('review_required', 0)
+            },
+            "batch_id": batch.get('id'),
             "batch": batch
         }
 

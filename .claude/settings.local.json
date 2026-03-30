@@ -5,7 +5,11 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: agregar configuración CORS para permitir requests desde cualquier origen\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)",
       "Bash(mkdir:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(timeout:*)",
+      "Bash(dir:*)",
+      "Bash(.venv/Scripts/activate)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": []
