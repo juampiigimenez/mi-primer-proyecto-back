@@ -1,14 +1,17 @@
 """
 Robust import service for MercadoPago CSV/Excel files
 Handles all columns, classification, categorization, and normalization
+Pure Python implementation without pandas or numpy
 """
+import csv
 import hashlib
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import pandas as pd
 import re
+
+from openpyxl import load_workbook
 
 from app.models.enums import TransactionType, SourceType, TransactionStatus, TransactionNature, Currency
 from app.models.transaction import (
@@ -101,10 +104,10 @@ class MercadoPagoImporter:
 
         try:
             # Parse file
-            df = self._parse_file(file_path)
+            rows = self._parse_file(file_path)
 
             # Update total rows
-            total_rows = len(df)
+            total_rows = len(rows)
             self.db.update('transaction_import_batches', batch_id, {
                 'total_rows': total_rows
             })
@@ -115,14 +118,14 @@ class MercadoPagoImporter:
             duplicated = 0
             review_required = 0
 
-            for idx, row in df.iterrows():
+            for idx, row in enumerate(rows):
                 try:
                     # Save raw import row
                     raw_row_id = f"raw_{batch_id}_{idx}"
                     raw_row = RawImportRowCreate(
                         import_batch_id=batch_id,
-                        row_number=int(idx),
-                        raw_data=row.to_dict(),
+                        row_number=idx,
+                        raw_data=row,
                         parsed_successfully=False,
                     )
                     self.db.add('raw_import_rows', raw_row_id, raw_row)
@@ -194,30 +197,87 @@ class MercadoPagoImporter:
             })
             raise
 
-    def _parse_file(self, file_path: Path) -> pd.DataFrame:
-        """Parse CSV or Excel file"""
+    def _parse_file(self, file_path: Path) -> List[Dict[str, Any]]:
+        """Parse CSV or Excel file and return list of row dictionaries"""
         # Detect file type and read
         if file_path.suffix.lower() in ['.xlsx', '.xls']:
-            df = pd.read_excel(file_path)
+            return self._parse_excel(file_path)
         else:
-            # Try different encodings for CSV
-            for encoding in ['utf-8', 'latin-1', 'iso-8859-1']:
-                try:
-                    df = pd.read_csv(file_path, encoding=encoding)
-                    break
-                except (UnicodeDecodeError, Exception):
-                    continue
-            else:
-                raise ValueError("No se pudo decodificar el archivo CSV")
+            return self._parse_csv(file_path)
+
+    def _parse_excel(self, file_path: Path) -> List[Dict[str, Any]]:
+        """Parse Excel file using openpyxl"""
+        wb = load_workbook(filename=file_path, read_only=True, data_only=True)
+        ws = wb.active
+
+        # Get headers from first row
+        rows_iter = ws.iter_rows(values_only=True)
+        headers = next(rows_iter)
 
         # Normalize column names (uppercase, strip whitespace)
-        df.columns = df.columns.str.strip().str.upper()
+        headers = [str(h).strip().upper() if h is not None else f'COL_{i}'
+                   for i, h in enumerate(headers)]
 
-        return df
+        # Read data rows
+        data_rows = []
+        for row_values in rows_iter:
+            row_dict = {}
+            for header, value in zip(headers, row_values):
+                # Convert None and empty strings to None
+                if value is None or value == '':
+                    row_dict[header] = None
+                else:
+                    row_dict[header] = value
+            data_rows.append(row_dict)
+
+        wb.close()
+        return data_rows
+
+    def _parse_csv(self, file_path: Path) -> List[Dict[str, Any]]:
+        """Parse CSV file with multiple encoding attempts"""
+        # Try different encodings
+        for encoding in ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']:
+            try:
+                with open(file_path, 'r', encoding=encoding, newline='') as f:
+                    # Detect delimiter
+                    sample = f.read(8192)
+                    f.seek(0)
+
+                    # Try to detect delimiter
+                    sniffer = csv.Sniffer()
+                    try:
+                        dialect = sniffer.sniff(sample, delimiters=',;\t')
+                        delimiter = dialect.delimiter
+                    except csv.Error:
+                        delimiter = ','
+
+                    reader = csv.DictReader(f, delimiter=delimiter)
+
+                    # Normalize column names
+                    if reader.fieldnames:
+                        reader.fieldnames = [str(h).strip().upper()
+                                            for h in reader.fieldnames]
+
+                    # Read all rows
+                    data_rows = []
+                    for row in reader:
+                        # Convert empty strings to None
+                        normalized_row = {
+                            k: (None if v == '' else v)
+                            for k, v in row.items()
+                        }
+                        data_rows.append(normalized_row)
+
+                    return data_rows
+
+            except (UnicodeDecodeError, Exception) as e:
+                continue
+
+        raise ValueError("No se pudo decodificar el archivo CSV con ninguna codificación")
 
     def _parse_row(
         self,
-        row: pd.Series,
+        row: Dict[str, Any],
         source_type: SourceType,
         account_id: Optional[str],
         credit_card_id: Optional[str],
@@ -374,37 +434,42 @@ class MercadoPagoImporter:
 
         return tx_data, status, min(classification_confidence, category_confidence)
 
-    def _extract_primary_fields(self, row: pd.Series) -> Dict[str, Any]:
+    def _extract_primary_fields(self, row: Dict[str, Any]) -> Dict[str, Any]:
         """Extract primary columns from row"""
         data = {}
         for col_name, field_name in self.PRIMARY_COLUMNS.items():
-            if col_name in row.index:
+            if col_name in row:
                 value = row[col_name]
-                # Convert NaN/None to None
-                if pd.isna(value):
+                # Convert None to None, parse numbers
+                if value is None:
                     data[field_name] = None
+                elif field_name in ['gross_amount', 'real_amount', 'net_amount', 'fee_amount']:
+                    # Parse as float
+                    data[field_name] = self._parse_float(value)
+                elif field_name in ['installments']:
+                    # Parse as int
+                    data[field_name] = self._parse_int(value)
                 else:
                     data[field_name] = value
         return data
 
-    def _extract_raw_metadata(self, row: pd.Series) -> Dict[str, Any]:
+    def _extract_raw_metadata(self, row: Dict[str, Any]) -> Dict[str, Any]:
         """Extract secondary columns to raw metadata"""
         metadata = {}
-        for col in row.index:
+        for col, value in row.items():
             if col.upper() in self.SECONDARY_COLUMNS:
-                value = row[col]
-                if not pd.isna(value):
+                if value is not None:
                     metadata[col] = value
         return metadata
 
-    def _extract_merchant_raw(self, row: pd.Series, description: str) -> Optional[str]:
+    def _extract_merchant_raw(self, row: Dict[str, Any], description: str) -> Optional[str]:
         """Extract raw merchant name using priority order"""
         # Priority 1: STORE_NAME
-        if 'STORE_NAME' in row.index and not pd.isna(row['STORE_NAME']):
+        if 'STORE_NAME' in row and row['STORE_NAME'] is not None:
             return str(row['STORE_NAME']).strip()
 
         # Priority 2: POS_NAME
-        if 'POS_NAME' in row.index and not pd.isna(row['POS_NAME']):
+        if 'POS_NAME' in row and row['POS_NAME'] is not None:
             return str(row['POS_NAME']).strip()
 
         # Priority 3: Extract from DESCRIPTION
@@ -415,7 +480,7 @@ class MercadoPagoImporter:
 
     def _extract_card_digits(self, card_initial: Any) -> Optional[str]:
         """Extract card last digits from CARD_INITIAL_NUMBER"""
-        if pd.isna(card_initial):
+        if card_initial is None:
             return None
 
         card_str = str(card_initial).strip()
@@ -427,15 +492,60 @@ class MercadoPagoImporter:
 
         return None
 
+    def _parse_float(self, value: Any) -> Optional[float]:
+        """Parse value as float"""
+        if value is None:
+            return None
+        try:
+            # Handle string representations
+            if isinstance(value, str):
+                # Remove currency symbols and whitespace
+                value = value.strip().replace('$', '').replace(',', '').replace(' ', '')
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+
+    def _parse_int(self, value: Any) -> Optional[int]:
+        """Parse value as int"""
+        if value is None:
+            return None
+        try:
+            # Handle string representations
+            if isinstance(value, str):
+                value = value.strip()
+            return int(float(value))  # float() first to handle "1.0"
+        except (ValueError, TypeError):
+            return None
+
     def _parse_date(self, date_value: Any) -> Optional[datetime]:
         """Parse date value to datetime"""
-        if pd.isna(date_value):
+        if date_value is None:
             return None
 
         try:
             if isinstance(date_value, datetime):
                 return date_value
-            return pd.to_datetime(date_value)
+
+            # Try parsing string dates
+            if isinstance(date_value, str):
+                # Common date formats
+                for fmt in [
+                    '%Y-%m-%d %H:%M:%S',
+                    '%Y-%m-%d',
+                    '%d/%m/%Y %H:%M:%S',
+                    '%d/%m/%Y',
+                    '%Y/%m/%d %H:%M:%S',
+                    '%Y/%m/%d',
+                    '%d-%m-%Y %H:%M:%S',
+                    '%d-%m-%Y',
+                ]:
+                    try:
+                        return datetime.strptime(date_value.strip(), fmt)
+                    except ValueError:
+                        continue
+
+            # Try ISO format as last resort
+            return datetime.fromisoformat(str(date_value))
         except:
             return None
 

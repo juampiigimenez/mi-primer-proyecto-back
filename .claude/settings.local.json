@@ -9,7 +9,8 @@
       "Bash(timeout:*)",
       "Bash(dir:*)",
       "Bash(.venv/Scripts/activate)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(.venv/Scripts/python.exe:*)"
     ],
     "deny": [],
     "ask": []
