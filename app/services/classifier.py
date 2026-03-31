@@ -71,92 +71,52 @@ class TransactionClassifier:
         """
         Classify transaction type with confidence score
 
+        Rules:
+        - expense: TRANSACTION_AMOUNT < 0
+        - income: TRANSACTION_AMOUNT > 0
+        - transfer: TRANSACTION_TYPE contains "transfer" or DESCRIPTION contains "transferencia"
+        - refund: TRANSACTION_TYPE = "refund"
+        - ignored: ajustes internos y fees técnicos
+
         Returns:
             (TransactionType, confidence: float 0-1)
         """
-        signals = []
-        confidence = 0.0
-
-        # Signal 1: MercadoPago transaction_type (high confidence)
-        if transaction_type_raw:
-            tx_type_lower = transaction_type_raw.lower().strip()
-            if tx_type_lower in self.MP_TYPE_MAPPING:
-                signals.append(('mp_type', self.MP_TYPE_MAPPING[tx_type_lower], 0.9))
-
-        # Signal 2: Amount sign (medium confidence)
-        if amount < 0:
-            signals.append(('amount_negative', TransactionType.EXPENSE, 0.6))
-        elif amount > 0:
-            signals.append(('amount_positive', TransactionType.INCOME, 0.5))
-
-        # Signal 3: Description keywords (high confidence for specific patterns)
         desc_lower = description.lower() if description else ""
 
-        # Check for ignored patterns
+        # Rule 1: Check for ignored patterns (highest priority)
         if any(kw in desc_lower for kw in self.IGNORED_KEYWORDS):
-            return (TransactionType.ADJUSTMENT, 0.95)  # Mark as ignored/adjustment
+            return (TransactionType.ADJUSTMENT, 0.95)
 
-        # Check refund patterns (high priority)
-        if any(kw in desc_lower for kw in self.REFUND_KEYWORDS):
-            signals.append(('desc_refund', TransactionType.REFUND, 0.85))
+        # Rule 2: Check TRANSACTION_TYPE for refund (high priority)
+        if transaction_type_raw and transaction_type_raw.lower().strip() == 'refund':
+            return (TransactionType.REFUND, 0.95)
 
-        # Check transfer patterns
+        # Rule 3: Check for transfer patterns in TRANSACTION_TYPE or DESCRIPTION
+        if transaction_type_raw and 'transfer' in transaction_type_raw.lower():
+            return (TransactionType.TRANSFER, 0.90)
+
+        if 'transferencia' in desc_lower:
+            return (TransactionType.TRANSFER, 0.90)
+
+        # Also check other transfer keywords for robustness
         if any(kw in desc_lower for kw in self.TRANSFER_KEYWORDS):
-            signals.append(('desc_transfer', TransactionType.TRANSFER, 0.8))
+            return (TransactionType.TRANSFER, 0.85)
 
-        # Check adjustment patterns
-        if any(kw in desc_lower for kw in self.ADJUSTMENT_KEYWORDS):
-            signals.append(('desc_adjustment', TransactionType.ADJUSTMENT, 0.8))
+        # Rule 4: Amount-based classification (primary rule)
+        if amount < 0:
+            # Negative amount = expense
+            return (TransactionType.EXPENSE, 0.85)
+        elif amount > 0:
+            # Positive amount = income
+            return (TransactionType.INCOME, 0.85)
+        else:
+            # Amount is exactly 0 - check other signals
+            # Check for adjustment patterns
+            if any(kw in desc_lower for kw in self.ADJUSTMENT_KEYWORDS):
+                return (TransactionType.ADJUSTMENT, 0.80)
 
-        # Check expense patterns
-        if any(kw in desc_lower for kw in self.EXPENSE_KEYWORDS):
-            signals.append(('desc_expense', TransactionType.EXPENSE, 0.75))
-
-        # Check income patterns
-        if any(kw in desc_lower for kw in self.INCOME_KEYWORDS):
-            signals.append(('desc_income', TransactionType.INCOME, 0.75))
-
-        # Signal 4: Store/POS presence (strong indicator of expense)
-        if store_name or pos_name:
-            signals.append(('has_store', TransactionType.EXPENSE, 0.8))
-
-        # Signal 5: Payment method type
-        if payment_method_type:
-            pm_type_lower = payment_method_type.lower()
-            if pm_type_lower in ['debit_card', 'credit_card', 'prepaid_card']:
-                signals.append(('pm_card', TransactionType.EXPENSE, 0.7))
-            elif pm_type_lower in ['account_money', 'digital_wallet']:
-                # Could be either, rely on other signals
-                pass
-
-        # Signal 6: Payment method
-        if payment_method:
-            pm_lower = payment_method.lower()
-            if 'transfer' in pm_lower:
-                signals.append(('pm_transfer', TransactionType.TRANSFER, 0.75))
-
-        # Aggregate signals using weighted voting
-        if not signals:
-            # No signals, use amount sign as fallback
-            if amount < 0:
-                return (TransactionType.EXPENSE, 0.3)
-            else:
-                return (TransactionType.INCOME, 0.3)
-
-        # Count votes per type with weights
-        votes: Dict[TransactionType, float] = {}
-        for signal_name, tx_type, weight in signals:
-            votes[tx_type] = votes.get(tx_type, 0) + weight
-
-        # Get winner
-        winner_type = max(votes, key=votes.get)
-        max_vote = votes[winner_type]
-        total_votes = sum(votes.values())
-
-        # Calculate confidence (normalized)
-        confidence = min(max_vote / total_votes, 1.0) if total_votes > 0 else 0.5
-
-        return (winner_type, confidence)
+            # Fallback to uncategorized
+            return (TransactionType.EXPENSE, 0.30)
 
     def classify_nature(
         self,

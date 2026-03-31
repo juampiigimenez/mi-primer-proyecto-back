@@ -11,29 +11,53 @@ class TransactionCategorizer:
     """
 
     # Category rules: (category_name, keywords, min_confidence)
+    # Updated with specific MercadoPago merchant patterns
     CATEGORY_RULES = [
-        # Groceries
+        # Groceries - supermercados
         ('groceries', [
             'carrefour', 'coto', 'jumbo', 'dia', 'disco', 'vea', 'changomas',
             'supermercado', 'super', 'market', 'walmart', 'makro'
+        ], 0.90),
+
+        # Transporte - uber, cabify, taxi, sube
+        ('transporte', [
+            'uber', 'cabify', 'taxi', 'sube', 'didi', 'tren', 'colectivo',
+            'peaje', 'toll', 'metrovias', 'trenes', 'subte', 'transporte'
+        ], 0.90),
+
+        # Comida - delivery y restaurantes
+        ('comida', [
+            'pedidosya', 'pedidos ya', 'rappi', 'cafe', 'restaurant', 'burger',
+            'mc', 'mostaza', 'starbucks', 'havanna', 'freddo', 'grido',
+            'subway', 'wendys', 'pizza', 'parrilla', 'sushi', 'comida',
+            'bar', 'resto', 'delivery', 'glovo', 'uber eats'
         ], 0.85),
 
-        # Food delivery
-        ('food_delivery', [
-            'pedidosya', 'pedidos ya', 'rappi', 'delivery', 'glovo', 'uber eats'
-        ], 0.95),
+        # Compras online - mercadolibre, amazon
+        ('compras_online', [
+            'mercadolibre', 'mercado libre', 'ml', 'amazon', 'ebay',
+            'aliexpress', 'tiendamia'
+        ], 0.90),
 
-        # Restaurants
-        ('restaurants', [
-            'cafe', 'bar', 'resto', 'restaurant', 'burger', 'mc', 'mostaza',
-            'starbucks', 'havanna', 'freddo', 'grido', 'subway', 'wendys',
-            'pizza', 'parrilla', 'sushi', 'comida'
-        ], 0.80),
+        # Servicios - personal, movistar, claro, internet
+        ('servicios', [
+            'personal', 'movistar', 'claro', 'tuenti', 'internet', 'wifi',
+            'fibertel', 'speedy', 'telecom', 'iplan', 'servicio'
+        ], 0.90),
 
-        # Transport
-        ('transport', [
-            'uber', 'cabify', 'didi', 'taxi', 'sube', 'tren', 'colectivo',
-            'peaje', 'toll', 'metrovias', 'trenes', 'subte', 'transporte'
+        # Suscripciones - netflix, spotify, youtube, google
+        ('suscripciones', [
+            'netflix', 'spotify', 'youtube premium', 'youtube', 'google one',
+            'google', 'icloud', 'openai', 'chatgpt', 'claude', 'amazon prime',
+            'disney', 'hbo', 'flow', 'telecentro', 'directv', 'suscripción',
+            'suscripcion', 'subscription', 'mensualidad'
+        ], 0.90),
+
+        # Finanzas - binance, belo, ripio, lemon
+        ('finanzas', [
+            'binance', 'belo', 'ripio', 'lemon', 'buenbit', 'satoshitango',
+            'broker', 'invertir', 'cedear', 'crypto', 'fci', 'fondo común',
+            'fondo comun', 'plazo fijo', 'investment', 'inversión', 'inversion'
         ], 0.90),
 
         # Fuel
@@ -42,11 +66,10 @@ class TransactionCategorizer:
             'gasoil', 'gas oil', 'gnc', 'fuel', 'petrol'
         ], 0.95),
 
-        # Shopping
+        # Shopping (general)
         ('shopping', [
-            'mercadolibre', 'mercado libre', 'ml', 'tienda', 'shop', 'adidas',
-            'nike', 'zara', 'h&m', 'forever', 'falabella', 'ripley', 'ropa',
-            'clothing', 'amazon'
+            'tienda', 'shop', 'adidas', 'nike', 'zara', 'h&m', 'forever',
+            'falabella', 'ripley', 'ropa', 'clothing'
         ], 0.75),
 
         # Health
@@ -63,23 +86,9 @@ class TransactionCategorizer:
 
         # Entertainment
         ('entertainment', [
-            'cine', 'cinema', 'spotify', 'event', 'tickets', 'ticketek',
+            'cine', 'cinema', 'event', 'tickets', 'ticketek',
             'gaming', 'steam', 'playstation', 'xbox', 'nintendo', 'teatro',
             'recital', 'show', 'entretenimiento'
-        ], 0.85),
-
-        # Subscriptions
-        ('subscriptions', [
-            'netflix', 'spotify', 'youtube premium', 'youtube', 'google one',
-            'icloud', 'openai', 'chatgpt', 'claude', 'amazon prime', 'disney',
-            'hbo', 'flow', 'telecentro', 'directv', 'suscripción', 'suscripcion',
-            'subscription', 'mensualidad'
-        ], 0.90),
-
-        # Services
-        ('services', [
-            'internet', 'wifi', 'personal', 'movistar', 'claro', 'tuenti',
-            'fibertel', 'speedy', 'telecom', 'iplan', 'servicio'
         ], 0.85),
 
         # Utilities
@@ -104,13 +113,6 @@ class TransactionCategorizer:
             'sueldo', 'salario', 'payroll', 'haberes', 'salary', 'nómina',
             'nomina', 'remuneración', 'remuneracion'
         ], 0.95),
-
-        # Investment
-        ('investment', [
-            'binance', 'belo', 'buenbit', 'ripio', 'lemon', 'broker', 'invertir',
-            'cedear', 'crypto', 'fci', 'fondo común', 'fondo comun', 'plazo fijo',
-            'investment', 'inversión', 'inversion'
-        ], 0.90),
 
         # Savings
         ('savings', [
@@ -203,23 +205,23 @@ class TransactionCategorizer:
         """Get human-readable category name"""
         display_names = {
             'groceries': 'Supermercado',
-            'food_delivery': 'Delivery de Comida',
-            'restaurants': 'Restaurantes y Bares',
-            'transport': 'Transporte',
+            'transporte': 'Transporte',
+            'comida': 'Comida (Restaurantes y Delivery)',
+            'compras_online': 'Compras Online',
+            'servicios': 'Servicios (Internet/Teléfono)',
+            'suscripciones': 'Suscripciones',
+            'finanzas': 'Finanzas (Inversiones y Crypto)',
             'fuel': 'Combustible',
             'shopping': 'Compras',
             'health': 'Salud',
             'pharmacy': 'Farmacia',
             'entertainment': 'Entretenimiento',
-            'subscriptions': 'Suscripciones',
-            'services': 'Servicios (Internet/Teléfono)',
             'utilities': 'Servicios Públicos',
             'rent': 'Alquiler',
             'education': 'Educación',
             'salary': 'Salario',
             'transfer': 'Transferencia',
             'refund': 'Devolución',
-            'investment': 'Inversión',
             'savings': 'Ahorro',
             'credit_card_payment': 'Pago de Tarjeta',
             'taxes': 'Impuestos',
