@@ -10,7 +10,14 @@
       "Bash(dir:*)",
       "Bash(.venv/Scripts/activate)",
       "Bash(pip install:*)",
-      "Bash(.venv/Scripts/python.exe:*)"
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(if [ -f \"transacciones.json\" ])",
+      "Bash(then echo \"Existe: transacciones.json\")",
+      "Bash(fi)",
+      "Bash(if [ -f \"data/finanzas.json\" ])",
+      "Bash(then echo \"Existe: data/finanzas.json\")",
+      "Bash(if [ -d \"data\" ])",
+      "Bash(then echo \"Directorio data existe\")"
     ],
     "deny": [],
     "ask": []

@@ -1,8 +1,10 @@
 """
 Main FastAPI application with modular architecture
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List
 
 from config.settings import (
     API_TITLE,
@@ -16,6 +18,9 @@ from config.settings import (
 
 # Import routers
 from app.routers import imports
+
+# Import storage module for original endpoints
+import storage
 
 app = FastAPI(
     title=API_TITLE,
@@ -31,6 +36,32 @@ app.add_middleware(
     allow_methods=CORS_ALLOW_METHODS,
     allow_headers=CORS_ALLOW_HEADERS,
 )
+
+# Pydantic models for original endpoints
+class TransaccionCreate(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "tipo": "ingreso",
+                "monto": 1500.50,
+                "descripcion": "Salario mensual"
+            }
+        }
+    )
+
+    tipo: str = Field(..., description="Tipo de transacción: 'ingreso' o 'gasto'")
+    monto: float = Field(..., gt=0, description="Monto de la transacción (debe ser positivo)")
+    descripcion: str = Field(..., min_length=1, description="Descripción de la transacción")
+
+class Transaccion(TransaccionCreate):
+    id: int
+    fecha: str
+
+class Balance(BaseModel):
+    ingresos: float
+    gastos: float
+    balance: float
+
 
 # Include routers
 app.include_router(imports.router, prefix="/api/v1/imports", tags=["Imports"])
@@ -50,6 +81,10 @@ def root():
             "docs": "/docs",
             "redoc": "/redoc",
             "health": "/health",
+            "POST /transacciones": "Crear nueva transacción",
+            "GET /transacciones": "Listar todas las transacciones",
+            "GET /balance": "Obtener balance total",
+            "POST /api/v1/imports/upload": "Importar transacciones desde archivo"
         }
     }
 
@@ -61,6 +96,37 @@ def health_check():
         "status": "healthy",
         "version": API_VERSION
     }
+
+
+# Original endpoints from main.py
+@app.post("/transacciones", response_model=Transaccion, status_code=201)
+def crear_transaccion(transaccion: TransaccionCreate):
+    """Crea una nueva transacción (ingreso o gasto)"""
+    if transaccion.tipo not in ["ingreso", "gasto"]:
+        raise HTTPException(
+            status_code=400,
+            detail="El tipo debe ser 'ingreso' o 'gasto'"
+        )
+
+    nueva_transaccion = storage.agregar_transaccion(
+        tipo=transaccion.tipo,
+        monto=transaccion.monto,
+        descripcion=transaccion.descripcion
+    )
+
+    return nueva_transaccion
+
+
+@app.get("/transacciones", response_model=List[Transaccion])
+def obtener_transacciones():
+    """Obtiene todas las transacciones registradas"""
+    return storage.leer_transacciones()
+
+
+@app.get("/balance", response_model=Balance)
+def obtener_balance():
+    """Obtiene el balance total (ingresos - gastos)"""
+    return storage.calcular_balance()
 
 
 if __name__ == "__main__":
