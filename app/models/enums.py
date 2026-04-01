@@ -9,7 +9,7 @@ class TransactionType(str, Enum):
     INCOME = "ingreso"
     EXPENSE = "gasto"
     TRANSFER = "transferencia"
-    REFUND = "reembolso"
+    REFUND = "devolucion"
     ADJUSTMENT = "ajuste"
 
 

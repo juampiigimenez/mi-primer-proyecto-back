@@ -17,7 +17,14 @@
       "Bash(if [ -f \"data/finanzas.json\" ])",
       "Bash(then echo \"Existe: data/finanzas.json\")",
       "Bash(if [ -d \"data\" ])",
-      "Bash(then echo \"Directorio data existe\")"
+      "Bash(then echo \"Directorio data existe\")",
+      "Bash(if [ -d \".venv\" ])",
+      "Bash(then echo \"Existe: .venv\")",
+      "Bash(if [ -d \"venv\" ])",
+      "Bash(then echo \"Existe: venv\")",
+      "Bash(.venv/Scripts/pip.exe install:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

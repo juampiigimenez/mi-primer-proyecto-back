@@ -65,6 +65,7 @@ class JSONDatabase:
             'net_worth_snapshots': {},
             'crypto_wallets': {},
             'crypto_positions': {},
+            'processed_source_ids': {},  # Para deduplicación persistente
         }
 
     def _migrate(self, data: Dict[str, Any], from_version: str) -> Dict[str, Any]:
