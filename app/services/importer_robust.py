@@ -249,7 +249,8 @@ class MercadoPagoImporter:
                         dialect = sniffer.sniff(sample, delimiters=',;\t')
                         delimiter = dialect.delimiter
                     except csv.Error:
-                        delimiter = ','
+                        # Default to semicolon for MercadoPago CSVs
+                        delimiter = ';'
 
                     reader = csv.DictReader(f, delimiter=delimiter)
 
@@ -294,7 +295,10 @@ class MercadoPagoImporter:
         primary_data = self._extract_primary_fields(row)
 
         # Extract amount (can be negative)
-        raw_amount = primary_data.get('gross_amount', 0)
+        # IMPORTANTE: Usar REAL_AMOUNT para la clasificación correcta
+        # REAL_AMOUNT > 0 + credit_card = ingreso (alguien te pagó)
+        # REAL_AMOUNT < 0 = gasto (tú pagaste)
+        raw_amount = primary_data.get('real_amount', primary_data.get('gross_amount', 0))
         abs_amount = abs(raw_amount) if raw_amount else 0
 
         # Extract description

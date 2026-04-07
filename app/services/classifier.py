@@ -104,10 +104,13 @@ class TransactionClassifier:
 
         # Rule 4: Amount-based classification (primary rule)
         if amount < 0:
-            # Negative amount = expense
+            # Negative amount = expense (el usuario pagó algo)
             return (TransactionType.EXPENSE, 0.85)
         elif amount > 0:
             # Positive amount = income
+            # IMPORTANTE: Si PAYMENT_METHOD_TYPE = "credit_card" y amount > 0,
+            # significa que alguien te pagó con tarjeta (es un ingreso, NO un gasto)
+            # Esta es la regla correcta para transacciones de Mercado Pago
             return (TransactionType.INCOME, 0.85)
         else:
             # Amount is exactly 0 - check other signals
