@@ -61,6 +61,9 @@ class MercadoPagoImporterSimple:
         Returns:
             Dict con summary y lista de transacciones
         """
+        # Limpiar set de SOURCE_IDs para este archivo
+        self.current_file_source_ids.clear()
+
         # Parse file
         rows = self._parse_file(file_path)
 
@@ -73,9 +76,9 @@ class MercadoPagoImporterSimple:
 
         for idx, row in enumerate(rows):
             try:
-                # Verificar duplicado por SOURCE_ID en la base de datos
+                # Verificar duplicado por SOURCE_ID en el archivo actual
                 source_id = row.get('SOURCE_ID')
-                if source_id and self._is_duplicate(source_id):
+                if source_id and source_id in self.current_file_source_ids:
                     duplicates += 1
                     continue
 
@@ -83,9 +86,9 @@ class MercadoPagoImporterSimple:
                 tx_dict = self._parse_row(row, source_type)
 
                 if tx_dict:
-                    # Guardar SOURCE_ID en la base de datos como procesado
+                    # Marcar SOURCE_ID como procesado en este archivo
                     if source_id:
-                        self._mark_as_processed(source_id)
+                        self.current_file_source_ids.add(source_id)
 
                     transactions.append(tx_dict)
                     processed += 1
