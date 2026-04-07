@@ -38,15 +38,21 @@ El sistema guardaba SOURCE_IDs procesados en la base de datos, causando que tran
 Las transferencias realizadas con tarjeta de crédito aparecían como ingresos falsos cuando REAL_AMOUNT era positivo.
 
 ### Solución Implementada
-Si `PAYMENT_METHOD_TYPE = 'credit_card'` y `REAL_AMOUNT > 0`, la transacción se **ignora completamente**.
+Si `PAYMENT_METHOD = 'credit_card'` y `REAL_AMOUNT > 0`, la transacción se **ignora completamente**.
 
 Esto evita que las acreditaciones de tarjeta de crédito (que no son ingresos reales) aparezcan en el sistema.
 
-**Ubicación**: `app/services/importer_simple.py:239-242`
+**Nota técnica**: El CSV de Mercado Pago tiene dos columnas relacionadas:
+- `PAYMENT_METHOD`: puede ser `credit_card`, `debit_card`, `transfer`, etc.
+- `PAYMENT_METHOD_TYPE`: puede ser `credit`, `debit`, `account_money`, etc.
+
+La validación se hace sobre `PAYMENT_METHOD` (no sobre `PAYMENT_METHOD_TYPE`).
+
+**Ubicación**: `app/services/importer_simple.py:240-243`
 
 ```python
-# EXCEPCIÓN: Si PAYMENT_METHOD_TYPE = credit_card y REAL_AMOUNT > 0, ignorar
-if payment_method_type == 'credit_card' and real_amount > 0:
+# EXCEPCIÓN: Si PAYMENT_METHOD = credit_card y REAL_AMOUNT > 0, ignorar
+if payment_method == 'credit_card' and real_amount > 0:
     return None
 ```
 
