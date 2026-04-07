@@ -383,35 +383,3 @@ class MercadoPagoImporterSimple:
             return datetime.fromisoformat(str(date_value))
         except:
             return None
-
-    def _is_duplicate(self, source_id: str) -> bool:
-        """
-        Verifica si un SOURCE_ID ya fue procesado anteriormente
-
-        Returns:
-            True si es duplicado, False si no
-        """
-        try:
-            # Recargar datos del archivo para tener estado actualizado
-            self.db.data = self.db._load()
-            processed_ids = self.db.get_collection('processed_source_ids')
-            return source_id in processed_ids
-        except:
-            return False
-
-    def _mark_as_processed(self, source_id: str) -> None:
-        """
-        Marca un SOURCE_ID como procesado en la base de datos
-
-        Args:
-            source_id: El SOURCE_ID a marcar
-        """
-        try:
-            processed_ids = self.db.get_collection('processed_source_ids')
-            processed_ids[source_id] = {
-                'source_id': source_id,
-                'processed_at': datetime.now().isoformat()
-            }
-            self.db.save()
-        except Exception as e:
-            print(f"Error guardando SOURCE_ID {source_id}: {e}")
