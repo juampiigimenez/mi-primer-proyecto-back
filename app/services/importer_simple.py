@@ -25,8 +25,9 @@ class MercadoPagoImporterSimple:
     Con deduplicación persistente por SOURCE_ID
     """
 
-    # Columnas requeridas del archivo de Mercado Pago
-    REQUIRED_COLUMNS = {
+    # Columnas conocidas del archivo de Mercado Pago
+    # Nota: Se mantendrán TODAS las columnas originales del CSV
+    KNOWN_COLUMNS = {
         'SOURCE_ID': 'external_id',
         'TRANSACTION_DATE': 'operation_date',
         'REAL_AMOUNT': 'real_amount',
@@ -36,6 +37,7 @@ class MercadoPagoImporterSimple:
         'STORE_NAME': 'store_name',
         'POS_NAME': 'pos_name',
         'PAYMENT_METHOD': 'payment_method',
+        'PAYMENT_METHOD_TYPE': 'payment_method_type',
         'INSTALLMENTS': 'installments',
     }
 
