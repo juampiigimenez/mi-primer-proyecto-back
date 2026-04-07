@@ -271,15 +271,12 @@ class MercadoPagoImporterSimple:
             transaction_type_str=tx_type.value,
         )
 
-        # Determinar status
-        if category_confidence < 0.5:
-            status = TransactionStatus.PENDING
-        else:
-            status = TransactionStatus.CONFIRMED
+        # Determinar status - NO asignar "pendiente" automáticamente
+        status = TransactionStatus.CONFIRMED
 
-        # Moneda
+        # Moneda - SIEMPRE en ARS (Pesos)
         currency_code = row.get('TRANSACTION_CURRENCY') or 'ARS'
-        currency_str = currency_code.upper()
+        currency_str = 'ARS'  # Forzar ARS
 
         # Método de pago
         payment_method = row.get('PAYMENT_METHOD') or ''
@@ -287,21 +284,30 @@ class MercadoPagoImporterSimple:
         # Cuotas
         installments = self._parse_int(row.get('INSTALLMENTS'))
 
+        # Mantener TODAS las columnas originales del CSV
+        all_original_columns = {}
+        for col_name, col_value in row.items():
+            if col_value is not None and col_value != '':
+                all_original_columns[col_name] = col_value
+
         # Construir dict de transacción para respuesta
         return {
             "operation_date": operation_date.isoformat() if operation_date else None,
             "description": description,
             "merchant": merchant_display,
             "merchant_normalized": merchant_normalized,
-            "amount": abs_amount,
-            "currency": currency_str,
+            "amount": abs_amount,  # Valor absoluto
+            "real_amount": real_amount,  # Valor original con signo
+            "currency": currency_str,  # Siempre ARS
             "transaction_type": tx_type.value,  # "ingreso" o "gasto"
             "suggested_category_id": category or "sin_categoria",
-            "status": status.value,  # "confirmada" o "pendiente"
+            "status": status.value,  # Siempre "confirmada"
             "payment_method": payment_method,
+            "payment_method_type": payment_method_type,
             "installments": installments,
             "source_id": source_id,
             "category_confidence": category_confidence,
+            "all_columns": all_original_columns,  # TODAS las columnas originales
         }
 
     def _extract_merchant(
