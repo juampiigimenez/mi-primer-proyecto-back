@@ -83,8 +83,10 @@ def root():
             "health": "/health",
             "POST /transacciones": "Crear nueva transacción",
             "GET /transacciones": "Listar todas las transacciones",
-            "GET /balance": "Obtener balance total",
-            "POST /api/v1/imports/upload": "Importar transacciones desde archivo"
+            "GET /balance": "Obtener balance total (en ARS)",
+            "POST /api/v1/imports/upload": "Importar transacciones desde archivo CSV",
+            "GET /api/v1/imports/batches/{batch_id}/transactions": "Ver transacciones de un batch importado",
+            "POST /api/v1/imports/batches/{batch_id}/confirm": "Confirmar y pasar transacciones al dashboard"
         }
     }
 
