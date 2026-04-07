@@ -230,13 +230,19 @@ class MercadoPagoImporterSimple:
         real_amount = self._parse_float(row.get('REAL_AMOUNT'))
         description = str(row.get('DESCRIPTION') or 'Sin descripción').strip()
         operation_date = self._parse_date(row.get('TRANSACTION_DATE'))
+        payment_method_type = row.get('PAYMENT_METHOD_TYPE', '').lower()
 
         # Validar campos requeridos
         if real_amount is None or operation_date is None:
             return None
 
+        # EXCEPCIÓN: Si PAYMENT_METHOD_TYPE = credit_card y REAL_AMOUNT > 0, ignorar
+        # (evita que las transferencias con tarjeta aparezcan como ingresos falsos)
+        if payment_method_type == 'credit_card' and real_amount > 0:
+            return None
+
         # Clasificar tipo por REAL_AMOUNT
-        # Positivo = ingreso, Negativo = gasto
+        # Positivo = ingreso, Negativo = egreso/gasto
         if real_amount > 0:
             tx_type = TransactionType.INCOME
         elif real_amount < 0:
