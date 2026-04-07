@@ -47,10 +47,8 @@ class MercadoPagoImporterSimple:
         self.merchant_normalizer = MerchantNormalizer()
         self.db = get_db()
 
-        # Asegurar que la colección existe
-        if 'processed_source_ids' not in self.db.data:
-            self.db.data['processed_source_ids'] = {}
-            self.db.save()
+        # Set para trackear SOURCE_IDs del archivo actual (no persistente)
+        self.current_file_source_ids = set()
 
     def import_file(
         self,
