@@ -63,58 +63,58 @@ def test_importador():
     # Verificación 1: No hay duplicados en el mismo archivo
     source_ids = [tx.get('source_id') for tx in transactions if tx.get('source_id')]
     duplicados = len(source_ids) - len(set(source_ids))
-    print(f"   ✓ Duplicados en archivo: {duplicados} (debe ser 0)")
+    print(f"   [OK] Duplicados en archivo: {duplicados} (debe ser 0)")
 
     # Verificación 2: Clasificación por REAL_AMOUNT
     clasificacion_correcta = True
     for tx in transactions:
         if tx['real_amount'] > 0 and tx['transaction_type'] != 'ingreso':
             clasificacion_correcta = False
-            print(f"   ✗ ERROR: REAL_AMOUNT positivo pero tipo {tx['transaction_type']}")
+            print(f"   [ERROR] REAL_AMOUNT positivo pero tipo {tx['transaction_type']}")
         if tx['real_amount'] < 0 and tx['transaction_type'] != 'gasto':
             clasificacion_correcta = False
-            print(f"   ✗ ERROR: REAL_AMOUNT negativo pero tipo {tx['transaction_type']}")
+            print(f"   [ERROR] REAL_AMOUNT negativo pero tipo {tx['transaction_type']}")
 
     if clasificacion_correcta:
-        print(f"   ✓ Clasificación por REAL_AMOUNT: Correcta")
+        print(f"   [OK] Clasificacion por REAL_AMOUNT: Correcta")
 
     # Verificación 3: Excepción credit_card
-    # Buscar si hay algún ingreso con payment_method_type = credit_card
+    # Buscar si hay algún ingreso con payment_method = credit_card
     ingresos_credit_card = [
         tx for tx in ingresos
-        if tx.get('payment_method_type', '').lower() == 'credit'
+        if tx.get('payment_method', '').lower() == 'credit_card'
     ]
 
     if len(ingresos_credit_card) == 0:
-        print(f"   ✓ Excepción credit_card: Correcta (no hay ingresos con tarjeta de crédito)")
+        print(f"   [OK] Excepcion credit_card: Correcta (no hay ingresos con tarjeta de credito)")
     else:
-        print(f"   ✗ ERROR: Se encontraron {len(ingresos_credit_card)} ingresos con credit_card")
+        print(f"   [ERROR] Se encontraron {len(ingresos_credit_card)} ingresos con credit_card")
         for tx in ingresos_credit_card:
             print(f"      - {tx['description']} | ${tx['amount']}")
 
     # Verificación 4: Moneda en ARS
     no_ars = [tx for tx in transactions if tx.get('currency') != 'ARS']
     if len(no_ars) == 0:
-        print(f"   ✓ Moneda en ARS: Todas las transacciones están en ARS")
+        print(f"   [OK] Moneda en ARS: Todas las transacciones estan en ARS")
     else:
-        print(f"   ✗ ERROR: {len(no_ars)} transacciones no están en ARS")
+        print(f"   [ERROR] {len(no_ars)} transacciones no estan en ARS")
 
     # Verificación 5: Todas las columnas originales
     tienen_all_columns = [tx for tx in transactions if 'all_columns' in tx]
     if len(tienen_all_columns) == len(transactions):
-        print(f"   ✓ Columnas originales: Todas las transacciones tienen 'all_columns'")
+        print(f"   [OK] Columnas originales: Todas las transacciones tienen 'all_columns'")
         # Verificar que hay datos en all_columns
         ejemplo = transactions[0]['all_columns']
         print(f"     Ejemplo: {len(ejemplo)} columnas conservadas")
     else:
-        print(f"   ✗ ERROR: Solo {len(tienen_all_columns)}/{len(transactions)} tienen 'all_columns'")
+        print(f"   [ERROR] Solo {len(tienen_all_columns)}/{len(transactions)} tienen 'all_columns'")
 
     # Verificación 6: Sin estado "pendiente"
     pendientes = [tx for tx in transactions if tx.get('status') == 'pendiente']
     if len(pendientes) == 0:
-        print(f"   ✓ Estado: Ninguna transacción está 'pendiente'")
+        print(f"   [OK] Estado: Ninguna transaccion esta 'pendiente'")
     else:
-        print(f"   ✗ ERROR: {len(pendientes)} transacciones están 'pendiente'")
+        print(f"   [ERROR] {len(pendientes)} transacciones estan 'pendiente'")
 
     print("\n5. Resumen:")
     total_ingresos = sum(tx['amount'] for tx in ingresos)

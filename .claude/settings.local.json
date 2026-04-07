@@ -24,7 +24,8 @@
       "Bash(then echo \"Existe: venv\")",
       "Bash(.venv/Scripts/pip.exe install:*)",
       "Bash(curl:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(iconv:*)"
     ],
     "deny": [],
     "ask": []
