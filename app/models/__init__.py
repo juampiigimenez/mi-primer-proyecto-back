@@ -17,6 +17,7 @@ from .transaction import Transaction, TransactionImportBatch, RawImportRow
 from .category import Category, RecurringExpense, Budget
 from .asset import Asset, Liability, NetWorthSnapshot
 from .crypto import CryptoWallet, CryptoPosition
+from .import_history import ImportHistory
 
 __all__ = [
     # Enums
@@ -43,4 +44,5 @@ __all__ = [
     "NetWorthSnapshot",
     "CryptoWallet",
     "CryptoPosition",
+    "ImportHistory",
 ]

@@ -58,6 +58,7 @@ class JSONDatabase:
             'transactions': {},
             'transaction_import_batches': {},
             'raw_import_rows': {},
+            'import_history': {},  # NEW - Track confirmed imports
             'recurring_expenses': {},
             'budgets': {},
             'assets': {},

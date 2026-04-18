@@ -17,7 +17,7 @@ from config.settings import (
 )
 
 # Import routers
-from app.routers import imports
+from app.routers import imports, transactions
 
 # Import storage module for original endpoints
 import storage
@@ -65,7 +65,7 @@ class Balance(BaseModel):
 
 # Include routers
 app.include_router(imports.router, prefix="/api/v1/imports", tags=["Imports"])
-# app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])  # TODO: Next phase
+app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
 # app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Accounts"])  # TODO: Next phase
 # app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])  # TODO: Next phase
 
