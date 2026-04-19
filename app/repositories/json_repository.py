@@ -222,6 +222,10 @@ class JSONDatabase:
             del collection[item_id]
             self._save()
 
+    def reload(self) -> None:
+        """Reload data from disk"""
+        self.data = self._load()
+
     def query(self, collection_name: str, filter_fn) -> List[Dict[str, Any]]:
         """Query collection with filter function"""
         collection = self.get_collection(collection_name)
