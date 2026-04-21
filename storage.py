@@ -114,7 +114,9 @@ def agregar_transaccion(tipo: str, monto: float, descripcion: str, fecha: str = 
     # Calculate next ID based on max existing ID
     transactions_dict = data.get('transactions', {})
     if transactions_dict:
-        max_id = max(int(key) for key in transactions_dict.keys())
+        # Filter only numeric keys to find max ID
+        numeric_keys = [int(key) for key in transactions_dict.keys() if key.isdigit()]
+        max_id = max(numeric_keys) if numeric_keys else 0
         new_id = max_id + 1
     else:
         new_id = 1
