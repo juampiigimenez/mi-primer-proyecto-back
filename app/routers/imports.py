@@ -13,6 +13,7 @@ import uuid
 from app.models.enums import SourceType
 from app.services.importer_simple import MercadoPagoImporterSimple
 from app.repositories import get_db
+from app.utils.week_calculator import extract_week_from_filename
 
 router = APIRouter()
 
@@ -214,13 +215,16 @@ async def confirm_batch_transactions(batch_id: str) -> Dict[str, Any]:
         tx_type = tx.get('transaction_type')
         amount = tx.get('amount', 0)
         description = tx.get('description', 'Sin descripción')
+        operation_date = tx.get('operation_date')  # ISO format date string
 
         if tx_type == 'ingreso':
             # Registrar como ingreso en el dashboard
             storage.agregar_transaccion(
                 tipo='ingreso',
                 monto=amount,
-                descripcion=description
+                descripcion=description,
+                fecha=operation_date,
+                source='mercadopago'
             )
             ingresos_confirmados += 1
             total_ingresos += amount
@@ -230,19 +234,22 @@ async def confirm_batch_transactions(batch_id: str) -> Dict[str, Any]:
             storage.agregar_transaccion(
                 tipo='gasto',
                 monto=amount,
-                descripcion=description
+                descripcion=description,
+                fecha=operation_date,
+                source='mercadopago'
             )
             gastos_confirmados += 1
             total_gastos += amount
 
-    # Parse filename to get week information
-    try:
-        parsed = parse_settlement_filename(filename)
-        week_number = parsed["week"]
-        display_name = parsed["display_name"]
-    except ValueError:
+    # Extract week information from filename using utility function
+    week_info = extract_week_from_filename(filename)
+    if week_info:
+        year, week_number = week_info
+        display_name = f"Semana {week_number} - {year}"
+    else:
         # Fallback for invalid filenames
         week_number = 0
+        year = datetime.now().year
         display_name = f"Importación - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
 
     # Create import history record
@@ -264,6 +271,7 @@ async def confirm_batch_transactions(batch_id: str) -> Dict[str, Any]:
         "total_ingresos": total_ingresos,
         "total_gastos": total_gastos,
         "week_number": week_number,
+        "year": year,
         "display_name": display_name
     }
 

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List
 import storage
-from app.routers import imports, transactions
+from app.routers import imports, transactions, weeks, reset
 
 app = FastAPI(
     title="API de Finanzas Personales",
@@ -23,6 +23,8 @@ app.add_middleware(
 # Register routers
 app.include_router(imports.router, prefix="/api/v1/imports", tags=["Imports"])
 app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
+app.include_router(weeks.router, prefix="/api/v1/weeks", tags=["Weeks"])
+app.include_router(reset.router, prefix="/api/v1/reset", tags=["Reset"])
 
 class TransaccionCreate(BaseModel):
     model_config = ConfigDict(

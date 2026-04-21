@@ -17,7 +17,7 @@ from config.settings import (
 )
 
 # Import routers
-from app.routers import imports, transactions
+from app.routers import imports, transactions, weeks, reset
 
 # Import storage module for original endpoints
 import storage
@@ -36,6 +36,17 @@ app.add_middleware(
     allow_methods=CORS_ALLOW_METHODS,
     allow_headers=CORS_ALLOW_HEADERS,
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Run migrations on startup"""
+    # Migrate old data if needed
+    migration_stats = storage.migrate_old_data()
+    if migration_stats['migrated'] > 0:
+        print(f"Migration completed: {migration_stats['migrated']} transactions migrated")
+    if migration_stats['errors']:
+        print(f"Migration errors: {migration_stats['errors']}")
 
 # Pydantic models for original endpoints
 class TransaccionCreate(BaseModel):
@@ -66,6 +77,8 @@ class Balance(BaseModel):
 # Include routers
 app.include_router(imports.router, prefix="/api/v1/imports", tags=["Imports"])
 app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
+app.include_router(weeks.router, prefix="/api/v1/weeks", tags=["Weeks"])
+app.include_router(reset.router, prefix="/api/v1/reset", tags=["Reset"])
 # app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Accounts"])  # TODO: Next phase
 # app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])  # TODO: Next phase
 

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import List
 import storage
+from storage import update_transaction, delete_transaction
 
 router = APIRouter()
 
@@ -68,42 +69,31 @@ async def get_transaction(transaction_id: int):
 
 
 @router.put("/{transaction_id}")
-async def update_transaction(
-    transaction_id: int,
-    transaccion: TransaccionCreate
-):
-    """Update an existing transaction"""
-    _validate_tipo(transaccion.tipo)
+async def update_transaction_endpoint(transaction_id: int, updates: dict):
+    """
+    Update a transaction by ID.
 
-    transactions = storage.leer_transacciones()
-
-    for i, tx in enumerate(transactions):
-        if tx["id"] == transaction_id:
-            transactions[i]["monto"] = transaccion.monto
-            transactions[i]["tipo"] = transaccion.tipo
-            transactions[i]["descripcion"] = transaccion.descripcion
-
-            storage.guardar_transacciones(transactions)
-            return transactions[i]
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Transacción {transaction_id} no encontrada"
-    )
+    For Mercado Pago transactions, only descripcion and categoria can be updated.
+    For manual transactions, all fields can be updated.
+    """
+    try:
+        updated_tx = update_transaction(transaction_id, updates)
+        return {"success": True, "transaction": updated_tx}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating transaction: {str(e)}")
 
 
 @router.delete("/{transaction_id}")
-async def delete_transaction(transaction_id: int):
-    """Delete a transaction"""
-    transactions = storage.leer_transacciones()
-
-    for i, transaction in enumerate(transactions):
-        if transaction["id"] == transaction_id:
-            transactions.pop(i)
-            storage.guardar_transacciones(transactions)
-            return {"success": True, "message": f"Transacción {transaction_id} eliminada"}
-
-    raise HTTPException(
-        status_code=404,
-        detail=f"Transacción {transaction_id} no encontrada"
-    )
+async def delete_transaction_endpoint(transaction_id: int):
+    """
+    Delete a transaction by ID.
+    """
+    try:
+        delete_transaction(transaction_id)
+        return {"success": True, "message": "Transacción eliminada"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting transaction: {str(e)}")
