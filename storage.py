@@ -60,8 +60,17 @@ def _transform_imported_transaction(tx_key: str, tx: Dict) -> Dict:
     year = get_week_year(fecha_date)
 
     # Build transformed transaction
+    # Extract numeric ID from key (e.g., 'tx_203311db87bd' -> extract from external_id or generate)
+    if tx_key.isdigit():
+        tx_id = int(tx_key)
+    else:
+        # For imported transactions with non-numeric keys, use a hash of the key
+        import hashlib
+        hash_obj = hashlib.md5(tx_key.encode())
+        tx_id = int(hash_obj.hexdigest()[:8], 16)  # Use first 8 hex chars as integer
+
     transformed = {
-        'id': int(tx_key) if tx_key.isdigit() else tx.get('id', 0),
+        'id': tx_id,
         'tipo': tx.get('transaction_type', 'gasto'),
         'monto': tx.get('real_amount') or tx.get('amount', 0.0),
         'descripcion': tx.get('description', 'Sin descripción'),
