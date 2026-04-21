@@ -9,7 +9,7 @@ import storage
 router = APIRouter()
 
 
-@router.delete("")
+@router.delete("/reset-all")
 async def reset_all_data() -> Dict[str, Any]:
     """
     Reset all data in the database.
