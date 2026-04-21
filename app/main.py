@@ -78,7 +78,7 @@ class Balance(BaseModel):
 app.include_router(imports.router, prefix="/api/v1/imports", tags=["Imports"])
 app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
 app.include_router(weeks.router, prefix="/api/v1/weeks", tags=["Weeks"])
-app.include_router(reset.router, prefix="/api/v1/reset", tags=["Reset"])
+app.include_router(reset.router, prefix="/api/v1/reset-all", tags=["Reset"])
 # app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Accounts"])  # TODO: Next phase
 # app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])  # TODO: Next phase
 

@@ -13,13 +13,81 @@ def leer_transacciones() -> List[Dict]:
     # Extract transactions from the new system
     transactions_dict = data.get('transactions', {})
 
-    # Convert dict to list
-    transactions_list = list(transactions_dict.values())
+    # Convert dict to list and transform to expected schema
+    transactions_list = []
+    for tx_key, tx in transactions_dict.items():
+        # Check if this is an imported transaction that needs transformation
+        if 'transaction_type' in tx:
+            # Transform imported transaction to expected schema
+            transformed = _transform_imported_transaction(tx_key, tx)
+            transactions_list.append(transformed)
+        else:
+            # Already in expected format (manual transaction)
+            transactions_list.append(tx)
 
     # Sort by ID to maintain consistent ordering
     transactions_list.sort(key=lambda x: x.get('id', 0))
 
     return transactions_list
+
+
+def _transform_imported_transaction(tx_key: str, tx: Dict) -> Dict:
+    """
+    Transform imported transaction (English fields) to expected schema (Spanish fields).
+
+    Handles MercadoPago and other imported transactions with English field names.
+    """
+    from app.utils.week_calculator import get_week_number, get_week_year
+
+    # Extract and transform date
+    operation_date = tx.get('operation_date', '')
+    if operation_date:
+        # Parse ISO datetime and extract date part
+        if 'T' in operation_date:
+            dt = datetime.fromisoformat(operation_date.replace('Z', '+00:00'))
+            fecha = dt.strftime('%Y-%m-%d')
+            fecha_date = dt.date()
+        else:
+            fecha = operation_date
+            fecha_date = datetime.strptime(operation_date, '%Y-%m-%d').date()
+    else:
+        # Fallback to current date
+        fecha_date = datetime.now().date()
+        fecha = fecha_date.strftime('%Y-%m-%d')
+
+    # Calculate week
+    week_number = get_week_number(fecha_date)
+    year = get_week_year(fecha_date)
+
+    # Build transformed transaction
+    transformed = {
+        'id': int(tx_key) if tx_key.isdigit() else tx.get('id', 0),
+        'tipo': tx.get('transaction_type', 'gasto'),
+        'monto': tx.get('real_amount') or tx.get('amount', 0.0),
+        'descripcion': tx.get('description', 'Sin descripción'),
+        'fecha': fecha,
+        'week_number': week_number,
+        'year': year,
+        'source': tx.get('source', 'mercadopago')
+    }
+
+    # Add optional fields if present
+    if 'categoria' in tx:
+        transformed['categoria'] = tx['categoria']
+
+    if 'payment_method' in tx:
+        transformed['payment_method'] = tx['payment_method']
+
+    if 'payment_method_type' in tx:
+        transformed['payment_method_type'] = tx['payment_method_type']
+
+    if 'mercadopago_id' in tx:
+        transformed['mercadopago_id'] = tx['mercadopago_id']
+
+    if 'status' in tx:
+        transformed['status'] = tx['status']
+
+    return transformed
 
 def guardar_transacciones(transacciones: List[Dict]) -> None:
     """Guarda las transacciones en el archivo JSON"""
